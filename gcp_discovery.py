@@ -1,5 +1,6 @@
 import argparse
 import warnings
+import re
 from typing import List, Dict, Any
 
 # Suppress "Unrecognized ContentConfig enum value" warnings from the client library.
@@ -26,6 +27,7 @@ class GCPConnectorFetcher:
         self.project_id = project_id
         self.location = location
         self.client = discoveryengine.DataStoreServiceClient()
+        self.engine_client = discoveryengine.EngineServiceClient()
         
         # Registry of supported connectors to check against
         self.supported_connectors = [
@@ -33,10 +35,36 @@ class GCPConnectorFetcher:
             # onedrive, 
         ]
 
+    def _get_connected_apps_map(self) -> Dict[str, List[str]]:
+        """
+        Performs a reverse lookup of Engines to see which Data Stores they consume.
+        
+        Returns:
+            A dictionary mapping data_store_id to a list of Engine display names.
+        """
+        parent = f"projects/{self.project_id}/locations/{self.location}/collections/default_collection"
+        ds_map: Dict[str, List[str]] = {}
+        
+        try:
+            request = discoveryengine.ListEnginesRequest(parent=parent)
+            page_result = self.engine_client.list_engines(request=request)
+            
+            for engine in page_result:
+                # data_store_ids is a repeated field in the Engine object
+                for ds_id in getattr(engine, 'data_store_ids', []):
+                    if ds_id not in ds_map:
+                        ds_map[ds_id] = []
+                    ds_map[ds_id].append(engine.display_name)
+        except Exception as e:
+            # We don't want to crash the whole tool if Engines aren't accessible
+            print(f"[-] Warning: Could not fetch Engines for reverse lookup: {e}")
+            
+        return ds_map
+
     def fetch_third_party_connectors(self) -> List[Dict[str, Any]]:
         """
         Queries the Discovery Engine API and identifies all data stores.
-        Displays results in a vertical list format.
+        Displays results in a vertical list format with reverse-lookup app mapping.
         
         Returns:
             A list of dictionaries containing structured metadata for supported connectors.
@@ -44,6 +72,9 @@ class GCPConnectorFetcher:
         parent = f"projects/{self.project_id}/locations/{self.location}/collections/default_collection"
         print(f"[*] Querying Vertex AI Search / Discovery Engine...")
         print(f"[*] Target Environment: {parent}\n")
+        
+        # Perform reverse lookup before iterating datastores
+        apps_map = self._get_connected_apps_map()
         
         supported_connectors: List[Dict[str, Any]] = []
         all_metadata: List[Dict[str, Any]] = []
@@ -78,15 +109,19 @@ class GCPConnectorFetcher:
                     "CONTENT_CONFIG_UNSPECIFIED": "Generic Store"
                 }.get(cc_name, f"New Type ({cc_name})")
 
-                # 2. Extract basic metadata
+                # 2. Extract metadata and lookup Connected Apps
                 path_parts = data_store.name.split('/')
+                ds_id = path_parts[-1]
+                connected_apps_list = apps_map.get(ds_id, [])
+                connected_apps_str = ", ".join(connected_apps_list) if connected_apps_list else "N/A"
+
                 meta = {
                     "name": data_store.display_name,
-                    "id": path_parts[-1],
+                    "id": ds_id,
                     "location": path_parts[3] if len(path_parts) > 3 else "unknown",
-                    # UPDATED: Use Rosetta plugin name if found, otherwise use Native GCP type
+                    # Use Rosetta plugin name if found, otherwise use Native GCP type
                     "type": identified_metadata.get("connector_type") if identified_metadata else friendly_native_type,
-                    "connected_apps": identified_metadata.get("connected_app_name", "N/A") if identified_metadata else "N/A",
+                    "connected_apps": connected_apps_str,
                     "supported": "✅" if identified_metadata else "❌"
                 }
                 all_metadata.append(meta)
