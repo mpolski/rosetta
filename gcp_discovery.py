@@ -101,9 +101,6 @@ class GCPConnectorFetcher:
                 except:
                     cc_name = f"Enum({cc_enum})"
 
-                # Detect Ingestion Mode
-                ingestion_mode = "Ingested" if cc_name == "CONTENT_REQUIRED" else "Federated"
-
                 # Map common technical enums to friendly Console-style strings
                 friendly_native_type = {
                     "PUBLIC_WEBSITE": "Public Website",
@@ -112,15 +109,26 @@ class GCPConnectorFetcher:
                     "CONTENT_CONFIG_UNSPECIFIED": "Generic Store"
                 }.get(cc_name, f"New Type ({cc_name})")
 
+                # Detect Ingestion Mode
+                # Use "Ingested" for CONTENT_REQUIRED, otherwise "Federated".
+                # EXCEPTION: If the type is unrecognized ("New Type"), set mode to None to avoid ambiguity.
+                if friendly_native_type.startswith("New Type"):
+                    ingestion_mode = None
+                else:
+                    ingestion_mode = "Ingested" if cc_name == "CONTENT_REQUIRED" else "Federated"
+
                 # 2. Extract metadata and lookup Connected Apps
                 path_parts = data_store.name.split('/')
                 ds_id = path_parts[-1]
                 connected_apps_list = apps_map.get(ds_id, [])
                 connected_apps_str = ", ".join(connected_apps_list) if connected_apps_list else "N/A"
 
-                # Standardize the base type and append mode
+                # Standardize the base type and append mode ONLY if mode is present
                 base_type = identified_metadata.get("connector_type") if identified_metadata else friendly_native_type
-                display_type = f"{base_type} ({ingestion_mode})"
+                if ingestion_mode:
+                    display_type = f"{base_type} ({ingestion_mode})"
+                else:
+                    display_type = base_type
 
                 meta = {
                     "name": data_store.display_name,
