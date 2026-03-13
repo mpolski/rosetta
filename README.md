@@ -16,6 +16,20 @@ Rosetta is a native diagnostic tool that programmatically audits configured conn
 - **Journey 3: "The Creator" (Write-Back & Organization)**: Allows Gemini to draft documents and save them directly back into SharePoint folders.
 - **Journey 4: "The Process Automator" (List Management)**: Enables Gemini to interact with and manage SharePoint Lists for workflow automation.
 
+## Sample Output
+
+When executed, Rosetta generates a consultant-ready Markdown report that clearly identifies permission gaps and provides remediation steps:
+
+```markdown
+### ❌ FAIL: SharePoint Chat with Files (Download Action)
+**Customer Journey:** Journey 2: 'The Analyst' (Deep File Chat)
+
+**Impact:** Users can find files but cannot chat with them. Gemini is missing the Graph API permissions required for the 'Download Document' action.
+
+> **Remediation Action:**
+> To enable chatting with files, ensure the 'Download Document' action is enabled in the Google Cloud Console. In Entra ID, add at least one of these Delegated permissions: `Files.Read.All`, `Files.ReadWrite.All`, `Files.ReadWrite.` and grant admin consent.
+```
+
 ## Functionality
 
 Rosetta operates using four core pillars:
