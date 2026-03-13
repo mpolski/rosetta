@@ -96,6 +96,13 @@ uv run python main.py \
 
 *(Note: Requires `gcloud auth application-default login` for GCP access).*
 
+**Discovery-Only Mode:**
+To simply list the discovered connectors without performing an Entra ID audit (and without needing Entra credentials), use the `--list-only` flag:
+
+```bash
+uv run python main.py --project YOUR_GCP_PROJECT_ID --list-only
+```
+
 ### 2. Customer Mode (Manual Override)
 
 Skips GCP discovery entirely. Ideal for isolating specific connectors or strict InfoSec environments.

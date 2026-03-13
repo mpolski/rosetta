@@ -26,6 +26,7 @@ def main():
     gcp_group = parser.add_argument_group("GCP Discovery (Consultant Mode)")
     gcp_group.add_argument("--project", help="GCP Project ID to auto-discover connectors")
     gcp_group.add_argument("--location", default="global", help="GCP Location (default: global)")
+    gcp_group.add_argument("--list-only", action="store_true", help="Only list discovered connectors from GCP and exit (skips Entra ID audit)")
     
     # Manual Override
     parser.add_argument("--connector", choices=["sharepoint"], help="Manually specify connector type to audit (skips GCP discovery, ideal for Customer Mode)")
@@ -49,8 +50,9 @@ def main():
         print("[!] Error: You must specify either --project (for GCP discovery) or --connector (for manual audit).")
         sys.exit(1)
 
-    if not args.mock and not all([args.tenant, args.client_id, args.client_secret, args.sp_id]):
-        print("[!] Error: Entra ID credentials required (--tenant, --client-id, --client-secret, --sp-id) unless using --mock.")
+    # Entra ID credentials required for full audit, unless using --mock or --list-only
+    if not args.mock and not args.list_only and not all([args.tenant, args.client_id, args.client_secret, args.sp_id]):
+        print("[!] Error: Entra ID credentials required (--tenant, --client-id, --client-secret, --sp-id) unless using --mock or --list-only.")
         sys.exit(1)
 
     # --- STEP 1: INITIALIZE EVALUATOR (MODULE 1 & 4) ---
@@ -71,6 +73,10 @@ def main():
         fetcher = GCPConnectorFetcher(project_id=args.project, location=args.location)
         discovered = fetcher.fetch_third_party_connectors()
         connectors_to_audit.extend(discovered)
+
+    if args.list_only:
+        print("\n[*] Discovery complete. Exiting (--list-only specified).")
+        sys.exit(0)
 
     if not connectors_to_audit:
         print("[-] No connectors to audit. Exiting.")
