@@ -1,5 +1,11 @@
 import argparse
+import warnings
 from typing import List, Dict, Any
+
+# Suppress "Unrecognized ContentConfig enum value" warnings from the client library.
+# These occur when the GCP backend uses newer enum values than the local library supports.
+warnings.filterwarnings("ignore", category=UserWarning, message=".*Unrecognized ContentConfig enum value.*")
+
 from google.cloud import discoveryengine_v1 as discoveryengine
 from google.api_core.exceptions import PermissionDenied
 
@@ -29,17 +35,18 @@ class GCPConnectorFetcher:
 
     def fetch_third_party_connectors(self) -> List[Dict[str, Any]]:
         """
-        Queries the Discovery Engine API and delegates identification
-        to the specific connector modules.
+        Queries the Discovery Engine API and identifies all data stores.
+        Displays results in a vertical list format.
         
         Returns:
-            A list of dictionaries containing structured connector metadata.
+            A list of dictionaries containing structured metadata for supported connectors.
         """
         parent = f"projects/{self.project_id}/locations/{self.location}/collections/default_collection"
         print(f"[*] Querying Vertex AI Search / Discovery Engine...")
-        print(f"[*] Target Environment: {parent}")
+        print(f"[*] Target Environment: {parent}\n")
         
-        connectors: List[Dict[str, Any]] = []
+        supported_connectors: List[Dict[str, Any]] = []
+        all_metadata: List[Dict[str, Any]] = []
 
         try:
             request = discoveryengine.ListDataStoresRequest(parent=parent)
@@ -47,26 +54,43 @@ class GCPConnectorFetcher:
             
             for data_store in page_result:
                 # Ask each connector module if it recognizes this data store
-                identified = False
+                identified_metadata = None
                 for connector_module in self.supported_connectors:
                     result = connector_module.identify_connector(data_store)
                     if result:
-                        connectors.append(result)
-                        identified = True
-                        break # Stop checking once identified
+                        identified_metadata = result
+                        supported_connectors.append(result)
+                        break
                 
-                # Log unsupported datastores so the consultant is aware of them
-                if not identified:
-                    print(f"[-] Connector '{data_store.display_name}' not yet supported, stay tuned!")
+                # Extract basic metadata
+                path_parts = data_store.name.split('/')
+                meta = {
+                    "name": data_store.display_name,
+                    "id": path_parts[-1],
+                    "location": path_parts[3] if len(path_parts) > 3 else "unknown",
+                    "type": identified_metadata.get("connector_type", "Unknown") if identified_metadata else "Unsupported",
+                    "connected_apps": identified_metadata.get("connected_app_name", "N/A") if identified_metadata else "N/A",
+                    "supported": "✅" if identified_metadata else "❌"
+                }
+                all_metadata.append(meta)
 
-            if not connectors:
-                print("\n[-] No Supported Third-Party Connectors found in this project/location.")
-            else:
-                print(f"\n[+] Found {len(connectors)} Supported Connector(s):")
-                for c in connectors:
-                    print(f"    - {c.get('display_name', 'Unknown')} [{c.get('connector_type', 'unknown').upper()}] (ID: {c.get('data_store_id', 'N/A')})")
-                    
-            return connectors
+            if not all_metadata:
+                print("[-] No Data Stores found in this project/location.")
+                return []
+
+            # Print one by one
+            for i, m in enumerate(all_metadata, 1):
+                print(f"--- Connector {i} ---")
+                print(f"Name:               {m['name']}")
+                print(f"ID:                 {m['id']}")
+                print(f"Type:               {m['type']}")
+                print(f"Location:           {m['location']}")
+                print(f"Connected Apps:     {m['connected_apps']}")
+                print(f"Supported (Rosetta): {m['supported']}")
+                print()
+            
+            print(f"[+] Identified {len(supported_connectors)} supported connector(s).")
+            return supported_connectors
 
         except PermissionDenied:
             print("\n[!] Error: Permission Denied.")
