@@ -67,6 +67,20 @@ The CLI will execute and generate a detailed report located at: `reports/complia
 
 ## Running in Production (Live Environment)
 
+### Requirements
+
+To run the Rosetta diagnostic tool against the Microsoft Graph APIs, you need to create a dedicated App Registration in Entra ID for the tool itself.
+
+Based on the architecture and security constraints, that App Registration requires **Read-Only** access to query the directory. Specifically, it needs the following MS Graph Application permissions:
+
+-   `Application.Read.All` (or `Directory.Read.All`)
+
+These scopes allow the script to read the `oauth2PermissionGrants` (Delegated scopes) and `appRoleAssignments` (Application scopes) attached to the Gemini Enterprise Service Principal.
+
+> [!IMPORTANT]
+> **Admin Consent Requirement:**
+> Because these are tenant-wide read permissions, an Entra ID administrator with the **Cloud Application Administrator** or **Global Administrator** role will need to grant "Admin Consent" to this App Registration before the tool can successfully authenticate and fetch the data.
+
 ### 1. Consultant Mode (Auto-Discover via GCP)
 
 Discovers connectors configured in Google Cloud and audits them against live Entra ID scopes.
