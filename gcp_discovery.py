@@ -93,13 +93,16 @@ class GCPConnectorFetcher:
                         supported_connectors.append(result)
                         break
                 
-                # 1. Determine Native GCP Type from the API Enum
+                # 1. Determine Native GCP Type and Ingestion Mode from the API Enum
                 cc_enum = data_store.content_config
                 try:
                     # Attempt to get the string name (e.g., 'CONTENT_REQUIRED')
                     cc_name = cc_enum.name if hasattr(cc_enum, 'name') else str(cc_enum)
                 except:
                     cc_name = f"Enum({cc_enum})"
+
+                # Detect Ingestion Mode
+                ingestion_mode = "Ingested" if cc_name == "CONTENT_REQUIRED" else "Federated"
 
                 # Map common technical enums to friendly Console-style strings
                 friendly_native_type = {
@@ -115,12 +118,16 @@ class GCPConnectorFetcher:
                 connected_apps_list = apps_map.get(ds_id, [])
                 connected_apps_str = ", ".join(connected_apps_list) if connected_apps_list else "N/A"
 
+                # Standardize the base type and append mode
+                base_type = identified_metadata.get("connector_type") if identified_metadata else friendly_native_type
+                display_type = f"{base_type} ({ingestion_mode})"
+
                 meta = {
                     "name": data_store.display_name,
                     "id": ds_id,
                     "location": path_parts[3] if len(path_parts) > 3 else "unknown",
-                    # Use Rosetta plugin name if found, otherwise use Native GCP type
-                    "type": identified_metadata.get("connector_type") if identified_metadata else friendly_native_type,
+                    # Use Rosetta plugin name or Native GCP type, with mode appended
+                    "type": display_type,
                     "connected_apps": connected_apps_str,
                     "supported": "✅" if identified_metadata else "❌"
                 }
