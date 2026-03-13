@@ -1,0 +1,140 @@
+{
+  "schema_version": "1.1",
+  "connectors": {
+    "sharepoint": {
+      "display_name": "Microsoft SharePoint (Gemini Enterprise)",
+      "connector_limits": {
+        "max_sites_ingestion": 10000,
+        "warning_message": "SharePoint Data Ingestion supports a maximum of 10,000 sites. If your 'structured_searched_filter' approaches this limit, ingestion may fail. Please verify your site count via the SharePoint Admin Center."
+      },
+      "features": [
+        {
+          "feature_id": "sp_federated_search",
+          "name": "SharePoint Federated Search",
+          "tested_journey": "Journey 1: 'The Researcher' (Search & Grounding)",
+          "description": "Just-in-time search where Gemini queries SharePoint on behalf of the signed-in user. Requires Delegated permissions.",
+          "required_scopes": {
+            "application": {
+              "all": [],
+              "any": []
+            },
+            "delegated": {
+              "all": [],
+              "any": [
+                "Sites.Search.All",
+                "AllSites.Read",
+                "Sites.Selected"
+              ]
+            }
+          },
+          "translations": {
+            "friendly_success": "Federated Search is fully configured. Gemini has the required delegated read access.",
+            "friendly_failure": "Gemini cannot execute Federated Search. It is missing delegated read permissions.",
+            "remediation_template": "Navigate to Entra ID -> 'API Permissions' -> 'Microsoft Graph' -> 'Delegated permissions'. Add at least one of the following: `{missing_scopes}`. Grant admin consent."
+          }
+        },
+        {
+          "feature_id": "sp_data_ingestion",
+          "name": "SharePoint Data Ingestion",
+          "tested_journey": "Foundation: 'The Administrator' (Background Data Sync)",
+          "description": "Allows Vertex AI Search to ingest, sync, and index SharePoint content in the background.",
+          "required_scopes": {
+            "application": {
+              "all": [
+                "GroupMember.Read.All"
+              ],
+              "any": [
+                "Sites.FullControl.All",
+                "Sites.Selected"
+              ]
+            },
+            "delegated": {
+              "all": [
+                "User.Read"
+              ],
+              "any": []
+            }
+          },
+          "translations": {
+            "friendly_success": "Data Ingestion is fully configured. The background sync has the necessary Application permissions.",
+            "friendly_failure": "Gemini cannot sync SharePoint data. It is missing core Application-level ingestion scopes.",
+            "remediation_template": "For Ingestion, add the Application permissions: `{missing_scopes}`. NOTE: If utilizing 'Sites.Selected' for security, your SharePoint Admin must also use the SharePoint REST API or PnP PowerShell to explicitly grant this app access to the targeted site collections."
+          }
+        },
+        {
+          "feature_id": "sp_chat_with_files",
+          "name": "SharePoint Chat with Files (Download Action)",
+          "tested_journey": "Journey 2: 'The Analyst' (Deep File Chat)",
+          "description": "Enables the 'Download Document' action, allowing the Gemini assistant to temporarily download and chat with file contents (e.g., CSV, XLSX).",
+          "required_scopes": {
+            "application": {
+              "all": [],
+              "any": []
+            },
+            "delegated": {
+              "all": [],
+              "any": [
+                "Files.Read.All",
+                "Files.ReadWrite.All",
+                "Files.ReadWrite"
+              ]
+            }
+          },
+          "translations": {
+            "friendly_success": "Chat with Files is configured. Gemini has the required permissions to download and read file contents.",
+            "friendly_failure": "Users can find files but cannot chat with them. Gemini is missing the Graph API permissions required for the 'Download Document' action.",
+            "remediation_template": "To enable chatting with files, ensure the 'Download Document' action is enabled in the Google Cloud Console. In Entra ID, add at least one of these Delegated permissions: `{missing_scopes}` and grant admin consent."
+          }
+        },
+        {
+          "feature_id": "sp_content_creation",
+          "name": "SharePoint Content Creation (Upload/Create Actions)",
+          "tested_journey": "Journey 3: 'The Creator' (Write-Back & Organization)",
+          "description": "Enables Gemini to write back to SharePoint (e.g., 'Upload Document', 'Create Folder', 'Update Document').",
+          "required_scopes": {
+            "application": {
+              "all": [],
+              "any": []
+            },
+            "delegated": {
+              "all": [],
+              "any": [
+                "Files.ReadWrite.All",
+                "Sites.ReadWrite.All"
+              ]
+            }
+          },
+          "translations": {
+            "friendly_success": "Content Creation is configured. Users can ask Gemini to save AI-generated drafts directly back to SharePoint folders.",
+            "friendly_failure": "Users cannot save files back to SharePoint. Gemini is missing file write permissions.",
+            "remediation_template": "To allow Gemini to create and update files, add the Delegated permissions: `{missing_scopes}` in Entra ID and grant admin consent."
+          }
+        },
+        {
+          "feature_id": "sp_list_management",
+          "name": "SharePoint List Automation (Add List Item)",
+          "tested_journey": "Journey 4: 'The Process Automator' (List Management)",
+          "description": "Enables Gemini to interact with structured SharePoint Lists (e.g., 'Create List Item', 'Get List Items').",
+          "required_scopes": {
+            "application": {
+              "all": [],
+              "any": []
+            },
+            "delegated": {
+              "all": [],
+              "any": [
+                "Sites.Manage.All",
+                "Sites.ReadWrite.All"
+              ]
+            }
+          },
+          "translations": {
+            "friendly_success": "List Automation is configured. Gemini can read and write to SharePoint Lists.",
+            "friendly_failure": "Gemini cannot update SharePoint Lists. It lacks site management permissions.",
+            "remediation_template": "To enable list and site automation workflows, add the Delegated permissions: `{missing_scopes}` in Entra ID and grant admin consent."
+          }
+        }
+      ]
+    }
+  }
+}
