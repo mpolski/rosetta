@@ -6,6 +6,16 @@ Configuring third-party data connectors (e.g., Microsoft 365, SharePoint) for Ge
 
 Rosetta is a native diagnostic tool that programmatically audits configured connectors against required Microsoft Graph API scopes. It cross-references Entra ID permissions against strict, deterministic rulesets mapping to distinct "Customer Journeys" and translates complex API permission gaps into actionable, plain-English Markdown reports for InfoSec and IT teams.
 
+## Supported Customer Journeys
+
+### SharePoint
+
+- **Foundation: "The Administrator" (Background Data Sync)**: Ensures Vertex AI Search can continuously crawl and index SharePoint data. Requires Application-level permissions.
+- **Journey 1: "The Researcher" (Search & Grounding)**: Allows users to search SharePoint sites and receive grounded answers from Gemini.
+- **Journey 2: "The Analyst" (Deep File Chat)**: Enables Gemini to read and summarize specific, long-form documents (PDFs, Docs) directly from SharePoint.
+- **Journey 3: "The Creator" (Write-Back & Organization)**: Allows Gemini to draft documents and save them directly back into SharePoint folders.
+- **Journey 4: "The Process Automator" (List Management)**: Enables Gemini to interact with and manage SharePoint Lists for workflow automation.
+
 ## Functionality
 
 Rosetta operates using four core pillars:
