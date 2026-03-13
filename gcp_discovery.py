@@ -62,13 +62,30 @@ class GCPConnectorFetcher:
                         supported_connectors.append(result)
                         break
                 
-                # Extract basic metadata
+                # 1. Determine Native GCP Type from the API Enum
+                cc_enum = data_store.content_config
+                try:
+                    # Attempt to get the string name (e.g., 'CONTENT_REQUIRED')
+                    cc_name = cc_enum.name if hasattr(cc_enum, 'name') else str(cc_enum)
+                except:
+                    cc_name = f"Enum({cc_enum})"
+
+                # Map common technical enums to friendly Console-style strings
+                friendly_native_type = {
+                    "PUBLIC_WEBSITE": "Public Website",
+                    "CONTENT_REQUIRED": "Unstructured Data (GCS/3rd Party)",
+                    "NO_CONTENT": "Structured Data (BigQuery/API)",
+                    "CONTENT_CONFIG_UNSPECIFIED": "Generic Store"
+                }.get(cc_name, f"New Type ({cc_name})")
+
+                # 2. Extract basic metadata
                 path_parts = data_store.name.split('/')
                 meta = {
                     "name": data_store.display_name,
                     "id": path_parts[-1],
                     "location": path_parts[3] if len(path_parts) > 3 else "unknown",
-                    "type": identified_metadata.get("connector_type", "Unknown") if identified_metadata else "Unsupported",
+                    # UPDATED: Use Rosetta plugin name if found, otherwise use Native GCP type
+                    "type": identified_metadata.get("connector_type") if identified_metadata else friendly_native_type,
                     "connected_apps": identified_metadata.get("connected_app_name", "N/A") if identified_metadata else "N/A",
                     "supported": "✅" if identified_metadata else "❌"
                 }
